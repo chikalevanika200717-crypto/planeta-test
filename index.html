@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тестовое, которое видит процесс</title>
+<script>
+  (function(){ var t=null; try{ t=localStorage.getItem('prc-theme'); }catch(e){}
+    if(!t) t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t; })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f4ef; --card:#ffffff; --ink:#1d2433; --on-ink:#ffffff; --muted:#6b7280; --line:#e6e2d8;
+    --field:#fffdf9; --soft:#f3f0e9; --soft2:#ece8de; --header:rgba(246,244,239,.92); --lead:#384152;
+    --accent:#1f6f5c; --accent-soft:#e3f1ec; --warn:#b4531f; --warn-soft:#fdeee3; --red:#c02626; --dot-ring:#f6d6d6;
+    --paste:#ffe08a; --big:#ffc9a8; --away:#c9ccd3; --q:#3b6fd8;
+    --radius:14px; color-scheme:light;
+  }
+  :root[data-theme="dark"]{
+    --bg:#13161c; --card:#1b1f27; --ink:#e7e5e0; --on-ink:#13161c; --muted:#99a0ac; --line:#2c313b;
+    --field:#171a21; --soft:#222731; --soft2:#2a2f3a; --header:rgba(19,22,28,.9); --lead:#c4c8d0;
+    --accent:#2f9b7e; --accent-soft:#183329; --warn:#f0965f; --warn-soft:#3a271b; --red:#f06b6b; --dot-ring:rgba(210,59,59,.25);
+    --paste:#6a5510; --big:#73401f; --away:#4a505c; --q:#6b98f0;
+    color-scheme:dark;
+  }
+  .theme{border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;width:36px;height:36px;cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center}
+  .theme:hover{background:var(--soft)}
+  body{transition:background .2s,color .2s}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;font-size:16px;line-height:1.55}
+  a{color:var(--accent)}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--header);position:sticky;top:0;z-index:5;backdrop-filter:blur(6px)}
+  .brand{font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;cursor:pointer}
+  .dot{width:10px;height:10px;border-radius:50%;background:#d23b3b;box-shadow:0 0 0 4px var(--dot-ring)}
+  nav{display:flex;gap:6px;flex-wrap:wrap}
+  nav a{padding:6px 12px;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:600;font-size:14px}
+  nav a.on{background:var(--ink);color:var(--on-ink)}
+  main{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:40px;line-height:1.1;letter-spacing:-.02em;margin:0 0 14px}
+  h2{font-size:24px;letter-spacing:-.01em;margin:0 0 10px}
+  h3{font-size:17px;margin:0 0 6px}
+  .lead{font-size:19px;color:var(--lead);max-width:720px}
+  .muted{color:var(--muted)}
+  .small{font-size:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:16px 0}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media (max-width:760px){.grid3,.grid4{grid-template-columns:1fr 1fr} h1{font-size:30px}}
+  @media (max-width:480px){.grid3,.grid4{grid-template-columns:1fr}}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .step .n{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);font-weight:600}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer;background:var(--ink);color:var(--on-ink);text-decoration:none}
+  .btn:hover{filter:brightness(1.15)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+  .btn.green{background:var(--accent);color:#fff}
+  .btn.sm{padding:7px 12px;font-size:14px;border-radius:8px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .note{background:var(--accent-soft);border-radius:12px;padding:14px 16px}
+  .note.warn{background:var(--warn-soft)}
+  textarea,input[type=text]{width:100%;font:inherit;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--field);color:var(--ink)}
+  textarea:focus,input:focus{outline:none;border-color:var(--accent)}
+  textarea.answer{min-height:320px;resize:vertical}
+  textarea.qa{min-height:150px}
+  .task-body p{margin:0 0 10px} .task-body ul,.task-body ol{margin:0 0 10px;padding-left:22px}
+  .pill{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--soft2)}
+  .rec{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--red)}
+  .rec::before{content:"";width:8px;height:8px;border-radius:50%;background:#d23b3b;animation:blink 1.4s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .timer{font-family:'JetBrains Mono',monospace;font-size:28px;color:var(--muted);font-weight:500;letter-spacing:-.02em}
+  .timer.low{color:var(--red)}
+  .bar{height:6px;border-radius:6px;background:var(--soft2);overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--accent);transition:width .25s linear}
+  .modal{position:fixed;inset:0;background:rgba(20,24,33,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+  .modal .card{max-width:480px;width:100%}
+  .code{font-family:'JetBrains Mono',monospace;font-size:12px;min-height:120px;word-break:break-all}
+  .metric{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .metric b{display:block;font-size:24px;letter-spacing:-.01em}
+  .metric span{font-size:13px;color:var(--muted)}
+  .signals{list-style:none;padding:0;margin:0}
+  .signals li{padding:10px 12px;border-radius:10px;margin:6px 0;background:var(--soft)}
+  .signals li.hi{background:var(--warn-soft)}
+  .timeline{position:relative;height:34px;background:var(--soft);border-radius:8px;cursor:pointer;overflow:hidden;margin:10px 0 4px}
+  .timeline .m{position:absolute;top:0;bottom:0;min-width:3px}
+  .timeline .m.p{background:#e3b20f} .timeline .m.b{background:#e8743b} .timeline .m.w{background:var(--away);opacity:.9}
+  .timeline .m.q{background:var(--q);width:2px;min-width:2px}
+  .timeline .head{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+  .field{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:var(--field)}
+  .field .lbl{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .field .txt{white-space:pre-wrap;word-wrap:break-word;min-height:24px;font-size:15px}
+  .k-p{background:var(--paste);border-radius:3px} .k-b,.k-d{background:var(--big);border-radius:3px}
+  .caret{display:inline-block;width:2px;height:1.1em;background:var(--ink);vertical-align:-2px;animation:blink 1s infinite}
+  select{font:inherit;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--field);color:var(--ink)}
+  .moments{max-height:260px;overflow:auto}
+  .moments div{padding:7px 10px;border-radius:8px;cursor:pointer;font-size:14px}
+  .moments div:hover{background:var(--soft)}
+  .mono{font-family:'JetBrains Mono',monospace}
+  footer{color:var(--muted);font-size:13px;text-align:center;padding:30px}
+
+  /* Тематические курсоры: домик — обычный, ключ — на кнопках и ссылках */
+  html,body{cursor:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22 viewBox=%220 0 28 28%22%3E%3Cpath d=%22M14 2 L26.5 13.5 H23 V25.5 H5 V13.5 H1.5 Z%22 fill=%22%231f6f5c%22 stroke=%22%23fff%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2211.5%22 y=%2217%22 width=%225%22 height=%228.5%22 rx=%221%22 fill=%22%23fff%22/%3E%3Crect x=%2218%22 y=%2215%22 width=%223%22 height=%223%22 fill=%22%23ffe08a%22/%3E%3C/svg%3E") 14 2, auto}
+  a,button,.btn,.brand,.theme,select,summary,label,.timeline,.moments div,input[type=checkbox],input[type=file]{cursor:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22 viewBox=%220 0 28 28%22%3E%3Cg stroke-linecap=%22round%22 fill=%22none%22%3E%3Cpath d=%22M3 3 L17 17 M6.5 6.5 L9.5 3.5 M10 10 L13 7%22 stroke=%22%23fff%22 stroke-width=%225.5%22/%3E%3Ccircle cx=%2220.5%22 cy=%2220.5%22 r=%225%22 stroke=%22%23fff%22 stroke-width=%225.5%22/%3E%3Cpath d=%22M3 3 L17 17 M6.5 6.5 L9.5 3.5 M10 10 L13 7%22 stroke=%22%23c9961a%22 stroke-width=%222.6%22/%3E%3Ccircle cx=%2220.5%22 cy=%2220.5%22 r=%225%22 stroke=%22%23c9961a%22 stroke-width=%222.6%22/%3E%3C/g%3E%3C/svg%3E") 3 3, pointer}
+  textarea,input[type=text]{cursor:text}
+  .btn:disabled{cursor:not-allowed}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand" onclick="go('task-'+TASKS[0].id)"><svg class="logo" width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 2 L26.5 13.5 H23 V25.5 H5 V13.5 H1.5 Z" fill="var(--accent)" stroke="var(--card)" stroke-width="1.5" stroke-linejoin="round"/><rect x="11.5" y="17" width="5" height="8.5" rx="1" fill="var(--card)"/><rect x="18" y="15" width="3" height="3" fill="#ffe08a"/></svg><span>Планета Недвижимость</span></div>
+  <div class="row"><nav id="nav"></nav><button class="theme" id="theme" title="Сменить тему" aria-label="Сменить тему"></button></div>
+</header>
+<main id="app"></main>
+<footer>Прототип тестового задания для «Планеты Недвижимость».</footer>
+
+<script>
+/* =====================================================================
+   ЗАДАНИЯ. Чтобы добавить или поменять задание — отредактируйте этот блок.
+   id        — короткое имя латиницей; ссылка на задание: страница#task-<id>
+   body      — текст задания: пустая строка = новый абзац, "- " = список,
+               "1. " = нумерованный список, **жирный**
+   defense   — вопросы «защиты»: из pool случайно выбирается ask вопросов,
+               они идут по одному, вернуться назад нельзя; hint — подсказка
+   trackAway — когда фиксировать уходы в другие окна:
+               'defense' — только на защите (если для задания нужно искать
+               в интернете или звонить), 'all' — всё время, 'none' — никогда
+   ===================================================================== */
+const TASKS = [
+  {
+    id: 'e',
+    title: 'Где интернет врёт',
+    deadline: '48 часов',
+    minChars: 150,
+    answerLabel: 'Ваш отчёт',
+    trackAway: 'defense',
+    body: `О «Планете Недвижимость» в интернете много информации: сайт, объявления на Циан и Авито, карточки на картах. Где-то в ней есть **расхождение с реальностью**. Мы заложили его специально, и найти его, не выходя из интернета, нельзя.
+
+1. Найдите, где информация об агентстве или его объектах не совпадает с тем, что происходит на самом деле.
+2. Опишите, как вы это выяснили: куда смотрели, кому звонили или писали, что спрашивали.
+3. Предложите, как сделать, чтобы такие расхождения больше не появлялись.
+
+Отчёт пишите прямо в поле ниже: черновик сохраняется, страницу можно закрывать и открывать снова. После отчёта будет короткая «защита»: несколько вопросов по одному.`,
+    defense: {
+      ask: 3,
+      hint: 'Обычно на вопрос хватает 1–2 минут. Отвечайте своими словами, как в разговоре.',
+      pool: [
+        'Кто дал вам ключевую информацию? Как его зовут или какая у него роль, и что он сказал — своими словами, как запомнили.',
+        'Какая версия была у вас первой и оказалась неверной? Что заставило от неё отказаться?',
+        'Какой факт в вашем отчёте самый слабый — что вы не успели проверить лично?',
+        'Я перезваниваю тому же человеку, и он говорит обратное. Что вы сделаете в первые 10 минут?',
+        'Если бы у вас было не 48 часов, а 2 часа, — с чего бы вы начали и что бы выбросили?',
+        'Назовите одну деталь, которую вы узнали в разговоре и которой точно нет в интернете.'
+      ]
+    }
+  }
+];
+/* ===================================================================== */
+
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+function md(src){
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+  return src.trim().split(/\n\s*\n/).map(block=>{
+    const lines = block.split('\n');
+    if(lines.every(l=>/^\s*- /.test(l))) return '<ul>'+lines.map(l=>'<li>'+inline(l.replace(/^\s*- /,''))+'</li>').join('')+'</ul>';
+    if(lines.every(l=>/^\s*\d+\. /.test(l))) return '<ol>'+lines.map(l=>'<li>'+inline(l.replace(/^\s*\d+\. /,''))+'</li>').join('')+'</ol>';
+    return '<p>'+lines.map(inline).join('<br>')+'</p>';
+  }).join('');
+}
+const fmtDur = ms => { ms = Math.max(0, Math.round(ms/1000)); const h=Math.floor(ms/3600), m=Math.floor(ms%3600/60), s=ms%60;
+  return h ? `${h} ч ${m} мин` : m ? `${m} мин ${s} с` : `${s} с`; };
+const clock = ms => { ms=Math.max(0,Math.round(ms/1000)); const m=Math.floor(ms/60), s=ms%60; return `${m}:${String(s).padStart(2,'0')}`; };
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+/* ---------- Маршруты ---------- */
+let cleanup = [];
+function go(h){ if(location.hash.replace('#','')===h) route(); else location.hash = h; }
+function route(){
+  cleanup.forEach(f=>f()); cleanup=[];
+  const h = location.hash.replace('#','');
+  const nav = [['task-'+TASKS[0].id, 'Пройти задание'], ['review', 'Просмотр записи']];
+  const onTask = !h.startsWith('review');
+  $('#nav').innerHTML = nav.map(([k,t])=>`<a href="#${k}" class="${(k==='review') !== onTask ?'on':''}">${t}</a>`).join('');
+  window.scrollTo(0,0);
+  if(h.startsWith('task-')){ const t = TASKS.find(x=>'task-'+x.id===h); return t ? Candidate(t) : notFound(); }
+  if(h==='review') return Review();
+  if(h==='review-demo'){ Review(); return loadSession(demoSession()); }
+  Candidate(TASKS[0]);
+}
+window.addEventListener('hashchange', route);
+function notFound(){ app.innerHTML = `<div class="card"><h2>Такого задания нет</h2><p>Проверьте ссылку. Доступные задания: ${TASKS.map(t=>`<a href="#task-${t.id}">${esc(t.title)}</a>`).join(', ')}</p></div>`; }
+
+/* ---------- Кандидат ---------- */
+function Candidate(task){
+  const KEY = 'prc-session-'+task.id;
+  let S = store.get(KEY);
+  let saveTimer = null;
+  const now = () => Date.now() - S.start;
+  const log = ev => { S.events.push(ev); clearTimeout(saveTimer); saveTimer = setTimeout(()=>store.set(KEY,S), 250); };
+  const flush = () => { clearTimeout(saveTimer); store.set(KEY,S); };
+
+  // уходы со страницы
+  let away = false;
+  const tracked = () => { const m = task.trackAway || 'all'; return m==='all' ? ['main','defense'].includes(S.phase) : m==='defense' ? S.phase==='defense' : false; };
+  const goAway = () => { if(!S || away || !tracked()) return; away = true; log(['w', now()]); };
+  const comeBack = () => { if(!S || !away) return; away = false; log(['v', now()]); };
+  const onVis = () => document.hidden ? goAway() : comeBack();
+  document.addEventListener('visibilitychange', onVis);
+  window.addEventListener('blur', goAway); window.addEventListener('focus', comeBack);
+  cleanup.push(()=>{ document.removeEventListener('visibilitychange', onVis); window.removeEventListener('blur', goAway); window.removeEventListener('focus', comeBack); clearTimeout(saveTimer); });
+
+  function attach(el, field){
+    let prev = el.value, lastType = null;
+    el.addEventListener('beforeinput', e => { lastType = e.inputType; });
+    el.addEventListener('input', () => {
+      const cur = el.value; let s = 0; const min = Math.min(cur.length, prev.length);
+      while(s<min && cur[s]===prev[s]) s++;
+      let e = 0; while(e<min-s && cur[cur.length-1-e]===prev[prev.length-1-e]) e++;
+      const del = prev.length - s - e, ins = cur.slice(s, cur.length - e);
+      let kind = 'k';
+      if(lastType==='insertFromPaste' || lastType==='insertFromPasteAsQuotation') kind='p';
+      else if(lastType==='insertFromDrop') kind='d';
+      else if(ins.length > 25) kind='b';
+      if(away) comeBack();
+      log(['e', now(), field, s, del, ins, kind]);
+      prev = cur; lastType = null;
+    });
+  }
+  function textOf(field){ let v=''; for(const ev of S.events) if(ev[0]==='e' && ev[2]===field) v = v.slice(0,ev[3]) + ev[5] + v.slice(ev[3]+ev[4]); return v; }
+
+  function render(){
+    if(!S) return intro();
+    if(S.phase==='main') return mainPhase();
+    if(S.phase==='defense') return defensePhase();
+    if(S.phase==='done') return donePhase();
+  }
+
+  function intro(){
+    app.innerHTML = `
+      <span class="pill">Тестовое задание · срок ${esc(task.deadline)}</span>
+      <h1 style="margin-top:14px">${esc(task.title)}</h1>
+      <div class="card task-body">${md(task.body)}</div>
+      <div class="card">
+        <label class="small muted" for="nm">Ваше имя</label>
+        <input type="text" id="nm" placeholder="Как к вам обращаться" style="margin:6px 0 14px">
+        <button class="btn green" id="start">Начать задание</button>
+        <p class="small muted" style="margin:10px 0 0">Страница записывает, как появляется текст ответа: набор, правки, вставки и переходы в другие окна.</p>
+      </div>`;
+    $('#start').onclick = () => {
+      const name = $('#nm').value.trim();
+      if(!name){ $('#nm').focus(); $('#nm').style.borderColor='var(--red)'; return; }
+      S = { v:1, task:{id:task.id, title:task.title}, name, start: Date.now(), phase:'main', trackAway: task.trackAway || 'all', events:[], fields:[{id:'main', label: task.answerLabel}] };
+      flush(); render();
+    };
+  }
+
+  function mainPhase(){
+    app.innerHTML = `
+      <div class="row" style="justify-content:space-between"><span class="pill">${esc(task.title)} · ${esc(S.name)}</span><span class="rec">Запись идёт · <span id="el"></span></span></div>
+      <details class="card task-body" open><summary style="cursor:pointer;font-weight:700;margin-bottom:8px">Задание</summary>${md(task.body)}</details>
+      <div class="card">
+        <label class="small muted" for="ans">${esc(task.answerLabel)}</label>
+        <textarea class="answer" id="ans" style="margin-top:6px" placeholder="Пишите здесь. Черновик сохраняется автоматически."></textarea>
+        <div class="row" style="justify-content:space-between;margin-top:10px">
+          <span class="small muted" id="cnt"></span>
+          <button class="btn green" id="toDef">Сдать отчёт и перейти к защите</button>
+        </div>
+      </div>`;
+    const ta = $('#ans'); ta.value = textOf('main'); attach(ta, 'main');
+    const upd = () => { const n = ta.value.trim().length; $('#cnt').textContent = `${n} символов` + (n < task.minChars ? ` · минимум ${task.minChars}` : ''); $('#toDef').disabled = n < task.minChars; };
+    ta.addEventListener('input', upd); upd();
+    const tick = () => { const el = $('#el'); if(el) el.textContent = 'с начала ' + fmtDur(now()); };
+    tick(); const iv = setInterval(tick, 1000); cleanup.push(()=>clearInterval(iv));
+    $('#toDef').onclick = () => modal(`<h2>Сдать отчёт?</h2><p>После этого отчёт нельзя будет изменить. Дальше ${task.defense.ask} вопроса по одному: вопрос появится сразу, вернуться к предыдущему нельзя. ${esc(task.defense.hint||'')}</p>`,
+      [['Ещё поработаю', null], ['Начать защиту', () => {
+        log(['s', now(), 'main', 'submit']);
+        const qs = shuffle(task.defense.pool).slice(0, task.defense.ask);
+        S.defense = qs.map((text,i)=>({id:'q'+(i+1), text}));
+        S.fields.push(...S.defense.map(q=>({id:q.id, label:q.text})));
+        S.phase = 'defense'; S.qi = 0; S.qStarted = null; flush(); render();
+      }]]);
+  }
+
+  function defensePhase(){
+    const q = S.defense[S.qi];
+    if(!q){ return finish(); }
+    if(S.qStarted !== null && S.qStarted !== undefined && S.qShownFor === q.id){
+      // страницу перезагрузили во время вопроса — вопрос считается пропущенным
+      log(['s', now(), q.id, 'reload']); S.qi++; S.qStarted = null; flush(); return defensePhase();
+    }
+    S.qStarted = now(); S.qShownFor = q.id; log(['q', S.qStarted, q.id, q.text]); flush();
+    app.innerHTML = `
+      <div class="row" style="justify-content:space-between"><span class="pill">Защита · вопрос ${S.qi+1} из ${S.defense.length}</span><span class="rec">Запись идёт</span></div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:flex-end"><h2 style="max-width:620px">${esc(q.text)}</h2><div class="timer" id="tm" title="Сколько времени прошло"></div></div>
+        <p class="small muted" style="margin:6px 0 14px">${esc(task.defense.hint||'')}</p>
+        <textarea class="qa" id="qa" placeholder="Отвечайте коротко и по делу"></textarea>
+        <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn green" id="qok">Ответить</button></div>
+      </div>`;
+    const ta = $('#qa'); attach(ta, q.id); ta.focus();
+    let done = false;
+    const next = reason => { if(done) return; done = true; clearInterval(iv); log(['s', now(), q.id, reason]); S.qi++; S.qStarted = null; S.qShownFor = null; flush(); render(); };
+    const tick = () => { const tm=$('#tm'); if(tm) tm.textContent = clock(now() - S.qStarted); };
+    const iv = setInterval(tick, 500); tick(); cleanup.push(()=>clearInterval(iv));
+    $('#qok').onclick = () => next('submit');
+  }
+
+  async function finish(){
+    log(['end', now()]); S.phase = 'done'; flush(); render();
+  }
+
+  async function donePhase(){
+    app.innerHTML = `
+      <h1>Готово, спасибо!</h1>
+      <p class="lead">Скопируйте код результата и отправьте его работодателю. В нём ваш отчёт, ответы на вопросы и запись процесса.</p>
+      <div class="card">
+        <textarea class="code" id="code" readonly>Готовлю код…</textarea>
+        <div class="row" style="margin-top:10px"><button class="btn green" id="cp">Скопировать код</button><span class="small muted" id="cpm"></span></div>
+      </div>
+      <p class="small muted">Код сохранён в этом браузере: если закроете страницу, он будет здесь же. <a href="#" id="reset">Пройти заново</a></p>`;
+    const code = await encodeSession(S);
+    $('#code').value = code;
+    $('#cp').onclick = async () => { try{ await navigator.clipboard.writeText(code); $('#cpm').textContent = 'Скопировано'; }catch(e){ $('#code').select(); $('#cpm').textContent = 'Код выделен — нажмите Ctrl+C'; } };
+    $('#reset').onclick = e => { e.preventDefault(); modal('<h2>Начать заново?</h2><p>Текущий результат будет удалён из браузера. Если вы ещё не отправили код — сначала скопируйте его.</p>', [['Отмена', null], ['Удалить и начать', ()=>{ store.del(KEY); S=null; render(); }]]); };
+  }
+
+  if(S && S.phase==='main') log(['r', now()]);
+  render();
+}
+
+/* ---------- Модальное окно ---------- */
+function modal(html, buttons){
+  const m = document.createElement('div'); m.className='modal';
+  m.innerHTML = `<div class="card">${html}<div class="row" style="justify-content:flex-end;margin-top:10px">${buttons.map((b,i)=>`<button class="btn ${i===buttons.length-1?'green':'ghost'}" data-i="${i}">${esc(b[0])}</button>`).join('')}</div></div>`;
+  m.onclick = e => { const i = e.target.dataset && e.target.dataset.i; if(i===undefined && e.target!==m) return; m.remove(); if(i!==undefined && buttons[i][1]) buttons[i][1](); };
+  document.body.appendChild(m);
+}
+
+/* ---------- Кодирование результата ---------- */
+function b64enc(bytes){ let s=''; for(let i=0;i<bytes.length;i+=0x8000) s+=String.fromCharCode.apply(null, bytes.subarray(i,i+0x8000)); return btoa(s); }
+function b64dec(str){ const s=atob(str); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b; }
+async function encodeSession(S){
+  const data = {v:S.v, task:S.task, name:S.name, start:S.start, trackAway:S.trackAway, fields:S.fields, events:S.events};
+  const json = JSON.stringify(data);
+  if('CompressionStream' in window){
+    try{ const buf = await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer(); return 'PRC1:'+b64enc(new Uint8Array(buf)); }catch(e){}
+  }
+  return 'PRC0:'+b64enc(new TextEncoder().encode(json));
+}
+async function decodeSession(code){
+  code = code.trim().replace(/\s+/g,'');
+  if(code.startsWith('PRC1:')){ const bytes=b64dec(code.slice(5)); const txt = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); return JSON.parse(txt); }
+  if(code.startsWith('PRC0:')) return JSON.parse(new TextDecoder().decode(b64dec(code.slice(5))));
+  if(code.startsWith('{')) return JSON.parse(code);
+  throw new Error('Не похоже на код результата: он должен начинаться с PRC1: или PRC0:');
+}
+
+/* ---------- Анализ ---------- */
+function analyze(S){
+  const E = S.events, edits = E.filter(e=>e[0]==='e');
+  let typed=0, pasted=0, big=0, deleted=0, aways=0, awayMs=0, lastBack=null, awayStart=null, activeMs=0, longest=0, lastEditT=null;
+  const awayPaste=[], moments=[];
+  for(const e of E){
+    if(e[0]==='w'){ aways++; awayStart=e[1]; moments.push({t:e[1], kind:'w', text:'Ушёл(ла) со страницы'}); }
+    if(e[0]==='v' && awayStart!==null){ const d=e[1]-awayStart; awayMs+=d; lastBack=e[1]; awayStart=null; moments.push({t:e[1], kind:'v', text:`Вернулся(ась) через ${fmtDur(d)}`}); }
+    if(e[0]==='q') moments.push({t:e[1], kind:'q', text:'Показан вопрос: '+e[3]});
+    if(e[0]==='s' && e[2]==='main') moments.push({t:e[1], kind:'s', text:'Отчёт сдан'});
+    if(e[0]==='s' && e[3]==='timeout') moments.push({t:e[1], kind:'s', text:'Время на вопрос вышло'});
+    if(e[0]==='s' && e[3]==='reload') moments.push({t:e[1], kind:'s', text:'Страница перезагружена во время вопроса — вопрос пропущен'});
+    if(e[0]==='r') moments.push({t:e[1], kind:'r', text:'Страница открыта заново (продолжение работы)'});
+    if(e[0]==='e'){
+      deleted += e[4];
+      const n = e[5].length;
+      if(e[6]==='k') typed+=n; else if(e[6]==='b') big+=n; else pasted+=n;
+      if(e[6]!=='k' && n>0){
+        moments.push({t:e[1], kind:e[6], text:`${e[6]==='b'?'Крупная вставка без нажатий':'Вставка из буфера'}: ${n} симв. — «${e[5].slice(0,90).replace(/\s+/g,' ')}${n>90?'…':''}»`});
+        if(lastBack!==null && e[1]-lastBack < 30000) awayPaste.push(e);
+      }
+      if(lastEditT!==null){ const g=e[1]-lastEditT; if(g<60000) activeMs+=g; if(g>longest) longest=g; }
+      lastEditT=e[1];
+    }
+  }
+  const end = E.length ? E[E.length-1][1] : 0;
+  const inserted = typed+pasted+big;
+  const defense = (S.fields||[]).filter(f=>f.id!=='main').map(f=>{
+    const shown = E.find(e=>e[0]==='q' && e[2]===f.id), closed = E.find(e=>e[0]==='s' && e[2]===f.id);
+    const fe = edits.filter(e=>e[2]===f.id);
+    const t0 = shown?shown[1]:0, t1 = closed?closed[1]:t0;
+    const awayIn = E.filter(e=>e[0]==='w' && e[1]>=t0 && e[1]<=t1).length;
+    const pIn = fe.filter(e=>e[6]!=='k').reduce((a,e)=>a+e[5].length,0);
+    return { label:f.label, firstKey: fe.length ? fe[0][1]-t0 : null, dur:t1-t0, reason: closed?closed[3]:'—', awayIn, pasted:pIn,
+             typed: fe.filter(e=>e[6]==='k').reduce((a,e)=>a+e[5].length,0) };
+  });
+  return {trackAway:S.trackAway||'all',typed,pasted,big,deleted,aways,awayMs,activeMs,longest,end,inserted,awayPaste,defense,moments:moments.sort((a,b)=>a.t-b.t)};
+}
+function signals(A){
+  const out=[], pct = A.inserted ? Math.round((A.pasted+A.big)/A.inserted*100) : 0;
+  out.push({hi:pct>=30, text:`Вставлено готовым текстом: <b>${A.pasted+A.big}</b> символов из ${A.inserted} (<b>${pct}%</b>). Остальное набрано с клавиатуры.`});
+  out.push({hi:A.awayPaste.length>0, text: A.awayPaste.length ? `<b>${A.awayPaste.length}</b> раз(а) текст вставлен в течение 30 секунд после возвращения из другого окна. Это самый сильный сигнал: стоит спросить, откуда этот фрагмент.` : 'Вставок сразу после ухода в другое окно не было.'});
+  if(A.trackAway==='none') out.push({hi:false, text:'Уходы в другие окна в этом задании не отслеживались.'});
+  else if(A.trackAway==='defense') out.push({hi:A.aways>0, text: A.aways ? `Во время защиты уходил(а) в другие окна <b>${A.aways}</b> раз(а), в сумме ${fmtDur(A.awayMs)}. Вопросы касаются собственного опыта, искать для ответа ничего не нужно.` : 'Во время защиты в другие окна не уходил(а). Пока писался отчёт, уходы не отслеживались: там нужно искать информацию.'});
+  else out.push({hi:false, text:`Уходил(а) со страницы <b>${A.aways}</b> раз(а), в сумме ${fmtDur(A.awayMs)}.`});
+  out.push({hi:false, text:`Правок: удалено <b>${A.deleted}</b> символов. Живой текст обычно много правят; ровный набор без единой правки бывает при перепечатывании.`});
+  A.defense.forEach((d,i)=>{
+    const bits=[];
+    bits.push(d.firstKey===null ? 'не начал(а) отвечать' : `начал(а) печатать через ${fmtDur(d.firstKey)}`);
+    bits.push(d.reason==='timeout'?'время вышло':d.reason==='reload'?'перезагрузил(а) страницу':`ответ за ${fmtDur(d.dur)}`);
+    if(d.awayIn) bits.push(`<b>уходил(а) в другое окно ${d.awayIn} раз(а)</b>`);
+    if(d.pasted) bits.push(`<b>вставлено ${d.pasted} символов</b>`);
+    out.push({hi: d.awayIn>0 || d.pasted>0, text:`Вопрос ${i+1}: ${bits.join(', ')}.`});
+  });
+  return out;
+}
+
+/* ---------- Просмотр ---------- */
+function Review(){
+  app.innerHTML = `
+    <h1>Просмотр записи</h1>
+    <p class="lead">Вставьте код результата, который прислал кандидат, или откройте пример.</p>
+    <div class="card">
+      <textarea class="code" id="inp" placeholder="PRC1:…"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="load">Открыть запись</button>
+        <label class="btn ghost sm" style="cursor:pointer">Из файла<input type="file" id="file" accept=".txt,.json" hidden></label>
+        <button class="btn ghost sm" id="demo">Открыть пример</button>
+        <span class="small" id="err" style="color:var(--red)"></span>
+      </div>
+    </div>
+    <div id="res"></div>`;
+  const open = async txt => { $('#err').textContent=''; try{ loadSession(await decodeSession(txt)); }catch(e){ $('#err').textContent = e.message || 'Не удалось прочитать код'; } };
+  $('#load').onclick = () => open($('#inp').value);
+  $('#file').onchange = async e => { const f=e.target.files[0]; if(f) open(await f.text()); };
+  $('#demo').onclick = () => loadSession(demoSession());
+}
+
+function loadSession(S){
+  const A = analyze(S);
+  const res = $('#res');
+  const started = new Date(S.start).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
+  res.innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(S.name)}${S.demo?' <span class="pill">пример</span>':''}</h2><span class="muted small">«${esc(S.task.title)}» · начало ${started}</span></div>
+    </div>
+    <div class="grid4">
+      <div class="metric"><b>${fmtDur(A.end)}</b><span>от начала до конца</span></div>
+      <div class="metric"><b>${fmtDur(A.activeMs)}</b><span>активного письма</span></div>
+      <div class="metric"><b>${A.inserted ? Math.round((A.pasted+A.big)/A.inserted*100) : 0}%</b><span>текста вставлено готовым</span></div>
+      <div class="metric"><b>${A.trackAway==='none'?'—':A.aways}</b><span>${A.trackAway==='defense'?'уходов в другие окна на защите':'уходов в другие окна'}</span></div>
+    </div>
+    <div class="card">
+      <h2>Сигналы</h2>
+      <ul class="signals">${signals(A).map(s=>`<li class="${s.hi?'hi':''}">${s.text}</li>`).join('')}</ul>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Повтор</h2>
+        <div class="row">
+          <button class="btn sm" id="pl">▶ Смотреть</button>
+          <select id="sp"><option value="1">×1</option><option value="4" selected>×4</option><option value="16">×16</option><option value="64">×64</option></select>
+          <label class="small"><input type="checkbox" id="cmp" checked> сжимать паузы</label>
+        </div>
+      </div>
+      <div class="timeline" id="tl"></div>
+      <div class="row" style="justify-content:space-between"><div class="legend"><span><i style="background:#e3b20f"></i>вставка</span><span><i style="background:#e8743b"></i>крупная вставка без нажатий</span><span><i style="background:var(--away)"></i>в другом окне</span><span><i style="background:var(--q)"></i>вопрос</span></div><span class="mono small" id="tt"></span></div>
+      <div id="fields"></div>
+    </div>
+    <div class="card"><h2>Ключевые моменты</h2><p class="small muted" style="margin-top:0">Нажмите, чтобы перейти к моменту в повторе.</p><div class="moments" id="mom"></div></div>`;
+  res.scrollIntoView({behavior:'smooth'});
+  Player(S, A);
+}
+
+function Player(S, A){
+  const E = S.events;
+  let vts = [], total = 0, idx = 0, playing = false, vt = 0, raf = null, lastFrame = 0;
+  const state = {}; let lastField = null;
+  const fieldsEl = $('#fields');
+  fieldsEl.innerHTML = S.fields.map(f=>`<div class="field" id="f-${f.id}"><div class="lbl">${f.id==='main'?esc(f.label):'Вопрос: '+esc(f.label)}</div><div class="txt"></div></div>`).join('');
+  function timeline(){
+    const compress = $('#cmp').checked; vts=[]; let v=0, prev=0;
+    for(const e of E){ let g=e[1]-prev; if(compress) g=Math.min(g, 1500); v+=g; prev=e[1]; vts.push(v); }
+    total = Math.max(v, 1);
+    const tl = $('#tl'); let html=''; let wStart=null;
+    E.forEach((e,i)=>{
+      const x = vts[i]/total*100;
+      if(e[0]==='e' && e[6]!=='k' && e[5].length) html+=`<div class="m ${e[6]==='b'?'b':'p'}" style="left:${x}%;width:0.4%"></div>`;
+      if(e[0]==='w') wStart=x;
+      if(e[0]==='v' && wStart!==null){ html+=`<div class="m w" style="left:${wStart}%;width:${Math.max(x-wStart,0.5)}%"></div>`; wStart=null; }
+      if(e[0]==='q') html+=`<div class="m q" style="left:${x}%"></div>`;
+    });
+    tl.innerHTML = html + '<div class="head" id="hd"></div>';
+  }
+  function reset(){ S.fields.forEach(f=>state[f.id]=[]); idx=0; lastField=null; }
+  function apply(e){ if(e[0]!=='e') return; const arr=state[e[2]]||(state[e[2]]=[]); arr.splice(e[3], e[4], ...e[5].split('').map(c=>({c,k:e[6]}))); lastField=e[2]; }
+  function seek(v){ reset(); vt=v; while(idx<E.length && vts[idx]<=vt){ apply(E[idx]); idx++; } draw(); }
+  function draw(){
+    for(const f of S.fields){
+      const arr = state[f.id]||[]; let html='', run='', k=null;
+      for(const ch of arr){ if(ch.k!==k){ if(run) html+= k==='k'?esc(run):`<span class="k-${k}">${esc(run)}</span>`; run=''; k=ch.k; } run+=ch.c; }
+      if(run) html+= k==='k'?esc(run):`<span class="k-${k}">${esc(run)}</span>`;
+      if(playing && lastField===f.id) html+='<span class="caret"></span>';
+      const el = document.querySelector(`#f-${f.id} .txt`); if(el) el.innerHTML = html || '<span class="muted small">пока пусто</span>';
+    }
+    const hd=$('#hd'); if(hd) hd.style.left = (vt/total*100)+'%';
+    const realT = idx>0 ? E[idx-1][1] : 0;
+    $('#tt').textContent = `${clock(realT)} / ${clock(A.end)}`;
+  }
+  function frame(ts){
+    if(!playing) return;
+    const dt = (ts - lastFrame) * Number($('#sp').value); lastFrame = ts; vt += dt;
+    while(idx<E.length && vts[idx]<=vt){ apply(E[idx]); idx++; }
+    if(idx>=E.length){ vt=total; playing=false; $('#pl').textContent='↺ Сначала'; }
+    draw(); if(playing) raf=requestAnimationFrame(frame);
+  }
+  $('#pl').onclick = () => {
+    if(playing){ playing=false; cancelAnimationFrame(raf); $('#pl').textContent='▶ Смотреть'; draw(); return; }
+    if(idx>=E.length) seek(0);
+    playing=true; $('#pl').textContent='❚❚ Пауза'; lastFrame=performance.now(); raf=requestAnimationFrame(frame);
+  };
+  $('#cmp').onchange = () => { const real = idx>0?E[idx-1][1]:0; timeline(); const j=E.findIndex(e=>e[1]>=real); seek(j<0?total:vts[j]); };
+  $('#tl').onclick = ev => { const r=ev.currentTarget.getBoundingClientRect(); seek((ev.clientX-r.left)/r.width*total); };
+  const icon = {p:'📋',b:'⚡',d:'📋',w:'↗',v:'↩',q:'❓',s:'⏱',r:'⟳'};
+  $('#mom').innerHTML = A.moments.length ? A.moments.map((m,i)=>`<div data-t="${m.t}"><span class="mono small muted">${clock(m.t)}</span> ${icon[m.kind]||'•'} ${esc(m.text)}</div>`).join('') : '<span class="muted small">Ничего примечательного</span>';
+  $('#mom').onclick = ev => { const d=ev.target.closest('[data-t]'); if(!d) return; const t=+d.dataset.t; const j=E.findIndex(e=>e[1]>=t); seek(j<0?total:vts[j]); $('#tl').scrollIntoView({behavior:'smooth',block:'center'}); };
+  cleanup.push(()=>{ playing=false; cancelAnimationFrame(raf); });
+  timeline(); seek(total);
+}
+
+/* ---------- Демо-запись ---------- */
+function demoSession(){
+  const task = TASKS[0], ev=[], val={}; let t=0;
+  const rnd = (a,b)=>a+Math.random()*(b-a);
+  const type = (f,text,speed=150) => { val[f]=val[f]||''; for(const ch of text){ t += speed*rnd(.5,1.5) + ('.,'.includes(ch)?rnd(200,700):0) + (Math.random()<.02?rnd(1500,4000):0); ev.push(['e',Math.round(t),f,val[f].length,0,ch,'k']); val[f]+=ch; } };
+  const typo = (f,wrong) => { type(f,wrong); for(let i=0;i<wrong.length;i++){ t+=rnd(90,160); ev.push(['e',Math.round(t),f,val[f].length-1,1,'','k']); val[f]=val[f].slice(0,-1); } };
+  const pause = ms => t+=ms;
+  const away = ms => { ev.push(['w',Math.round(t)]); t+=ms; ev.push(['v',Math.round(t)]); };
+  const paste = (f,text) => { t+=rnd(600,1500); val[f]=val[f]||''; ev.push(['e',Math.round(t),f,val[f].length,0,text,'p']); val[f]+=text; };
+  type('main','Расхождение: в объявлении на Циане дом в Лечищево указан как свободный, ');
+  typo('main','а по телефны '); type('main','а по телефону менеджер сказал, что на него уже внесён задаток.');
+  pause(9000);
+  type('main','\n\nКак выяснила: позвонила по номеру из объявления как покупатель, спросила, можно ли посмотреть дом в выходные. ');
+  pause(48000);
+  paste('main','\n\nРекомендации: внедрить единую CRM-систему с автоматической синхронизацией статусов объектов на всех площадках, назначить ответственного за актуальность объявлений и проводить еженедельный аудит публикаций. Это позволит минимизировать репутационные риски и повысить доверие клиентов.');
+  pause(6000);
+  type('main',' Проще: менять статус в одном месте, и пусть объявления подтягиваются оттуда.');
+  ev.push(['s',Math.round(t+2000),'main','submit']); t+=2500;
+  const qs = task.defense.pool.slice(0,3), fields=[{id:'main',label:task.answerLabel}];
+  qs.forEach((q,i)=>fields.push({id:'q'+(i+1),label:q}));
+  ev.push(['q',Math.round(t),'q1',qs[0]]); pause(3500);
+  type('q1','Девушка-менеджер, кажется Анна. Сказала, что дом «в работе», задаток внесли на прошлой неделе, объявление просто не сняли.',120);
+  ev.push(['s',Math.round(t+1200),'q1','submit']); t+=1500;
+  ev.push(['q',Math.round(t),'q2',qs[1]]); pause(2000); away(22000);
+  paste('q2','Изначально я предполагала, что расхождение связано с некорректной информацией о графике работы офиса, однако после анализа данных эта гипотеза не подтвердилась.');
+  ev.push(['s',Math.round(t+3000),'q2','submit']); t+=3500;
+  const tq = Math.round(t); ev.push(['q',tq,'q3',qs[2]]); pause(11000);
+  type('q3','Что задаток именно на этот дом, а не на соседний — уточнить не усп',170);
+  type('q3','ела, но у задатка есть дата — можно сверить с датой снятия объявления.',170);
+  ev.push(['s',Math.round(t+1500),'q3','submit']); t+=1500;
+  ev.push(['end',Math.round(t)]);
+  return {v:1, demo:true, trackAway:'defense', task:{id:task.id,title:task.title}, name:'Пример: кандидат «Мария»', start:Date.now()-Math.round(t)-3600e3, fields, events:ev};
+}
+
+/* ---------- Тема ---------- */
+function paintTheme(){ const d = document.documentElement.dataset.theme==='dark'; const b=$('#theme'); b.textContent = d ? '☀' : '☾'; b.title = d ? 'Светлая тема' : 'Ночная тема'; }
+$('#theme').onclick = () => { const t = document.documentElement.dataset.theme==='dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = t; try{ localStorage.setItem('prc-theme', t); }catch(e){} paintTheme(); };
+paintTheme();
+
+route();
+</script>
+</body>
+</html>
