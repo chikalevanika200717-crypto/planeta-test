@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Тестовое, которое видит процесс</title>
+<title>Планета Недвижимость · тестовое задание</title>
 <script>
   (function(){ var t=null; try{ t=localStorage.getItem('prc-theme'); }catch(e){}
     if(!t) t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
@@ -108,6 +108,11 @@
   textarea,input[type=text]{cursor:text}
   .btn:disabled{cursor:not-allowed}
 </style>
+<style>
+  .answer-view{white-space:pre-wrap;word-wrap:break-word;font-size:15px}
+  .qhead{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+  .qhead .t{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);white-space:nowrap}
+</style>
 </head>
 <body>
 <header>
@@ -125,9 +130,6 @@
                "1. " = нумерованный список, **жирный**
    defense   — вопросы «защиты»: из pool случайно выбирается ask вопросов,
                они идут по одному, вернуться назад нельзя; hint — подсказка
-   trackAway — когда фиксировать уходы в другие окна:
-               'defense' — только на защите (если для задания нужно искать
-               в интернете или звонить), 'all' — всё время, 'none' — никогда
    ===================================================================== */
 const TASKS = [
   {
@@ -136,7 +138,6 @@ const TASKS = [
     deadline: '48 часов',
     minChars: 150,
     answerLabel: 'Ваш отчёт',
-    trackAway: 'defense',
     body: `О «Планете Недвижимость» в интернете много информации: сайт, объявления на Циан и Авито, карточки на картах. Где-то в ней есть **расхождение с реальностью**. Мы заложили его специально, и найти его, не выходя из интернета, нельзя.
 
 1. Найдите, где информация об агентстве или его объектах не совпадает с тем, что происходит на самом деле.
@@ -188,13 +189,12 @@ function go(h){ if(location.hash.replace('#','')===h) route(); else location.has
 function route(){
   cleanup.forEach(f=>f()); cleanup=[];
   const h = location.hash.replace('#','');
-  const nav = [['task-'+TASKS[0].id, 'Пройти задание'], ['review', 'Просмотр записи']];
+  const nav = [['task-'+TASKS[0].id, 'Пройти задание'], ['review', 'Просмотр ответа']];
   const onTask = !h.startsWith('review');
   $('#nav').innerHTML = nav.map(([k,t])=>`<a href="#${k}" class="${(k==='review') !== onTask ?'on':''}">${t}</a>`).join('');
   window.scrollTo(0,0);
   if(h.startsWith('task-')){ const t = TASKS.find(x=>'task-'+x.id===h); return t ? Candidate(t) : notFound(); }
   if(h==='review') return Review();
-  if(h==='review-demo'){ Review(); return loadSession(demoSession()); }
   Candidate(TASKS[0]);
 }
 window.addEventListener('hashchange', route);
@@ -202,47 +202,15 @@ function notFound(){ app.innerHTML = `<div class="card"><h2>Такого зад�
 
 /* ---------- Кандидат ---------- */
 function Candidate(task){
-  const KEY = 'prc-session-'+task.id;
+  const KEY = 'pn-task-'+task.id;
   let S = store.get(KEY);
-  let saveTimer = null;
-  const now = () => Date.now() - S.start;
-  const log = ev => { S.events.push(ev); clearTimeout(saveTimer); saveTimer = setTimeout(()=>store.set(KEY,S), 250); };
-  const flush = () => { clearTimeout(saveTimer); store.set(KEY,S); };
-
-  // уходы со страницы
-  let away = false;
-  const tracked = () => { const m = task.trackAway || 'all'; return m==='all' ? ['main','defense'].includes(S.phase) : m==='defense' ? S.phase==='defense' : false; };
-  const goAway = () => { if(!S || away || !tracked()) return; away = true; log(['w', now()]); };
-  const comeBack = () => { if(!S || !away) return; away = false; log(['v', now()]); };
-  const onVis = () => document.hidden ? goAway() : comeBack();
-  document.addEventListener('visibilitychange', onVis);
-  window.addEventListener('blur', goAway); window.addEventListener('focus', comeBack);
-  cleanup.push(()=>{ document.removeEventListener('visibilitychange', onVis); window.removeEventListener('blur', goAway); window.removeEventListener('focus', comeBack); clearTimeout(saveTimer); });
-
-  function attach(el, field){
-    let prev = el.value, lastType = null;
-    el.addEventListener('beforeinput', e => { lastType = e.inputType; });
-    el.addEventListener('input', () => {
-      const cur = el.value; let s = 0; const min = Math.min(cur.length, prev.length);
-      while(s<min && cur[s]===prev[s]) s++;
-      let e = 0; while(e<min-s && cur[cur.length-1-e]===prev[prev.length-1-e]) e++;
-      const del = prev.length - s - e, ins = cur.slice(s, cur.length - e);
-      let kind = 'k';
-      if(lastType==='insertFromPaste' || lastType==='insertFromPasteAsQuotation') kind='p';
-      else if(lastType==='insertFromDrop') kind='d';
-      else if(ins.length > 25) kind='b';
-      if(away) comeBack();
-      log(['e', now(), field, s, del, ins, kind]);
-      prev = cur; lastType = null;
-    });
-  }
-  function textOf(field){ let v=''; for(const ev of S.events) if(ev[0]==='e' && ev[2]===field) v = v.slice(0,ev[3]) + ev[5] + v.slice(ev[3]+ev[4]); return v; }
+  const save = () => store.set(KEY, S);
 
   function render(){
     if(!S) return intro();
     if(S.phase==='main') return mainPhase();
     if(S.phase==='defense') return defensePhase();
-    if(S.phase==='done') return donePhase();
+    return donePhase();
   }
 
   function intro(){
@@ -254,19 +222,18 @@ function Candidate(task){
         <label class="small muted" for="nm">Ваше имя</label>
         <input type="text" id="nm" placeholder="Как к вам обращаться" style="margin:6px 0 14px">
         <button class="btn green" id="start">Начать задание</button>
-        <p class="small muted" style="margin:10px 0 0">Страница записывает, как появляется текст ответа: набор, правки, вставки и переходы в другие окна.</p>
       </div>`;
     $('#start').onclick = () => {
       const name = $('#nm').value.trim();
       if(!name){ $('#nm').focus(); $('#nm').style.borderColor='var(--red)'; return; }
-      S = { v:1, task:{id:task.id, title:task.title}, name, start: Date.now(), phase:'main', trackAway: task.trackAway || 'all', events:[], fields:[{id:'main', label: task.answerLabel}] };
-      flush(); render();
+      S = { v:2, task:{id:task.id, title:task.title}, name, start: Date.now(), phase:'main', report:'', answers:[] };
+      save(); render();
     };
   }
 
   function mainPhase(){
     app.innerHTML = `
-      <div class="row" style="justify-content:space-between"><span class="pill">${esc(task.title)} · ${esc(S.name)}</span><span class="rec">Запись идёт · <span id="el"></span></span></div>
+      <div class="row" style="justify-content:space-between"><span class="pill">${esc(task.title)} · ${esc(S.name)}</span><span class="small muted" id="el"></span></div>
       <details class="card task-body" open><summary style="cursor:pointer;font-weight:700;margin-bottom:8px">Задание</summary>${md(task.body)}</details>
       <div class="card">
         <label class="small muted" for="ans">${esc(task.answerLabel)}</label>
@@ -276,65 +243,59 @@ function Candidate(task){
           <button class="btn green" id="toDef">Сдать отчёт и перейти к защите</button>
         </div>
       </div>`;
-    const ta = $('#ans'); ta.value = textOf('main'); attach(ta, 'main');
+    const ta = $('#ans'); ta.value = S.report || '';
+    let t = null;
     const upd = () => { const n = ta.value.trim().length; $('#cnt').textContent = `${n} символов` + (n < task.minChars ? ` · минимум ${task.minChars}` : ''); $('#toDef').disabled = n < task.minChars; };
-    ta.addEventListener('input', upd); upd();
-    const tick = () => { const el = $('#el'); if(el) el.textContent = 'с начала ' + fmtDur(now()); };
-    tick(); const iv = setInterval(tick, 1000); cleanup.push(()=>clearInterval(iv));
+    ta.addEventListener('input', () => { S.report = ta.value; save(); upd(); }); upd();
+    const tick = () => { const el = $('#el'); if(el) el.textContent = 'С начала прошло ' + fmtDur(Date.now() - S.start); };
+    tick(); const iv = setInterval(tick, 1000); cleanup.push(()=>{ clearInterval(iv); clearTimeout(t); save(); });
     $('#toDef').onclick = () => modal(`<h2>Сдать отчёт?</h2><p>После этого отчёт нельзя будет изменить. Дальше ${task.defense.ask} вопроса по одному: вопрос появится сразу, вернуться к предыдущему нельзя. ${esc(task.defense.hint||'')}</p>`,
       [['Ещё поработаю', null], ['Начать защиту', () => {
-        log(['s', now(), 'main', 'submit']);
-        const qs = shuffle(task.defense.pool).slice(0, task.defense.ask);
-        S.defense = qs.map((text,i)=>({id:'q'+(i+1), text}));
-        S.fields.push(...S.defense.map(q=>({id:q.id, label:q.text})));
-        S.phase = 'defense'; S.qi = 0; S.qStarted = null; flush(); render();
+        S.report = ta.value; S.submittedAt = Date.now();
+        S.answers = shuffle(task.defense.pool).slice(0, task.defense.ask).map(q=>({q, a:'', ms:null}));
+        S.phase = 'defense'; S.qi = 0; S.qShownAt = null; save(); render();
       }]]);
   }
 
   function defensePhase(){
-    const q = S.defense[S.qi];
-    if(!q){ return finish(); }
-    if(S.qStarted !== null && S.qStarted !== undefined && S.qShownFor === q.id){
-      // страницу перезагрузили во время вопроса — вопрос считается пропущенным
-      log(['s', now(), q.id, 'reload']); S.qi++; S.qStarted = null; flush(); return defensePhase();
-    }
-    S.qStarted = now(); S.qShownFor = q.id; log(['q', S.qStarted, q.id, q.text]); flush();
+    const cur = S.answers[S.qi];
+    if(!cur){ S.phase='done'; S.finishedAt = Date.now(); save(); return render(); }
+    if(S.qShownAt){ // страницу перезагрузили во время вопроса — продолжаем тот же вопрос, время идёт
+    } else { S.qShownAt = Date.now(); save(); }
     app.innerHTML = `
-      <div class="row" style="justify-content:space-between"><span class="pill">Защита · вопрос ${S.qi+1} из ${S.defense.length}</span><span class="rec">Запись идёт</span></div>
+      <span class="pill">Защита · вопрос ${S.qi+1} из ${S.answers.length}</span>
       <div class="card">
-        <div class="row" style="justify-content:space-between;align-items:flex-end"><h2 style="max-width:620px">${esc(q.text)}</h2><div class="timer" id="tm" title="Сколько времени прошло"></div></div>
+        <div class="row" style="justify-content:space-between;align-items:flex-end"><h2 style="max-width:620px">${esc(cur.q)}</h2><div class="timer" id="tm" title="Сколько времени прошло"></div></div>
         <p class="small muted" style="margin:6px 0 14px">${esc(task.defense.hint||'')}</p>
-        <textarea class="qa" id="qa" placeholder="Отвечайте коротко и по делу"></textarea>
+        <textarea class="qa" id="qa" placeholder="Ваш ответ"></textarea>
         <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn green" id="qok">Ответить</button></div>
       </div>`;
-    const ta = $('#qa'); attach(ta, q.id); ta.focus();
-    let done = false;
-    const next = reason => { if(done) return; done = true; clearInterval(iv); log(['s', now(), q.id, reason]); S.qi++; S.qStarted = null; S.qShownFor = null; flush(); render(); };
-    const tick = () => { const tm=$('#tm'); if(tm) tm.textContent = clock(now() - S.qStarted); };
+    const ta = $('#qa'); ta.value = cur.a || ''; ta.focus();
+    ta.addEventListener('input', () => { cur.a = ta.value; save(); });
+    const tick = () => { const tm=$('#tm'); if(tm) tm.textContent = clock(Date.now() - S.qShownAt); };
     const iv = setInterval(tick, 500); tick(); cleanup.push(()=>clearInterval(iv));
-    $('#qok').onclick = () => next('submit');
-  }
-
-  async function finish(){
-    log(['end', now()]); S.phase = 'done'; flush(); render();
+    $('#qok').onclick = () => {
+      if(!ta.value.trim()){ ta.focus(); ta.style.borderColor='var(--red)'; return; }
+      clearInterval(iv); cur.a = ta.value; cur.ms = Date.now() - S.qShownAt;
+      S.qi++; S.qShownAt = null; save(); render();
+    };
   }
 
   async function donePhase(){
     app.innerHTML = `
       <h1>Готово, спасибо!</h1>
-      <p class="lead">Скопируйте код результата и отправьте его работодателю. В нём ваш отчёт, ответы на вопросы и запись процесса.</p>
+      <p class="lead">Скопируйте код результата и отправьте его работодателю. В нём ваш отчёт и ответы на вопросы защиты.</p>
       <div class="card">
         <textarea class="code" id="code" readonly>Готовлю код…</textarea>
         <div class="row" style="margin-top:10px"><button class="btn green" id="cp">Скопировать код</button><span class="small muted" id="cpm"></span></div>
       </div>
       <p class="small muted">Код сохранён в этом браузере: если закроете страницу, он будет здесь же. <a href="#" id="reset">Пройти заново</a></p>`;
-    const code = await encodeSession(S);
+    const code = await encodeResult(S);
     $('#code').value = code;
     $('#cp').onclick = async () => { try{ await navigator.clipboard.writeText(code); $('#cpm').textContent = 'Скопировано'; }catch(e){ $('#code').select(); $('#cpm').textContent = 'Код выделен — нажмите Ctrl+C'; } };
     $('#reset').onclick = e => { e.preventDefault(); modal('<h2>Начать заново?</h2><p>Текущий результат будет удалён из браузера. Если вы ещё не отправили код — сначала скопируйте его.</p>', [['Отмена', null], ['Удалить и начать', ()=>{ store.del(KEY); S=null; render(); }]]); };
   }
 
-  if(S && S.phase==='main') log(['r', now()]);
   render();
 }
 
@@ -346,226 +307,59 @@ function modal(html, buttons){
   document.body.appendChild(m);
 }
 
-/* ---------- Кодирование результата ---------- */
+/* ---------- Код результата ---------- */
 function b64enc(bytes){ let s=''; for(let i=0;i<bytes.length;i+=0x8000) s+=String.fromCharCode.apply(null, bytes.subarray(i,i+0x8000)); return btoa(s); }
 function b64dec(str){ const s=atob(str); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b; }
-async function encodeSession(S){
-  const data = {v:S.v, task:S.task, name:S.name, start:S.start, trackAway:S.trackAway, fields:S.fields, events:S.events};
+async function encodeResult(S){
+  const data = {v:2, task:S.task, name:S.name, start:S.start, submittedAt:S.submittedAt, finishedAt:S.finishedAt, report:S.report, answers:S.answers};
   const json = JSON.stringify(data);
   if('CompressionStream' in window){
-    try{ const buf = await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer(); return 'PRC1:'+b64enc(new Uint8Array(buf)); }catch(e){}
+    try{ const buf = await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer(); return 'PN1:'+b64enc(new Uint8Array(buf)); }catch(e){}
   }
-  return 'PRC0:'+b64enc(new TextEncoder().encode(json));
+  return 'PN0:'+b64enc(new TextEncoder().encode(json));
 }
-async function decodeSession(code){
+async function decodeResult(code){
   code = code.trim().replace(/\s+/g,'');
-  if(code.startsWith('PRC1:')){ const bytes=b64dec(code.slice(5)); const txt = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); return JSON.parse(txt); }
-  if(code.startsWith('PRC0:')) return JSON.parse(new TextDecoder().decode(b64dec(code.slice(5))));
+  if(code.startsWith('PN1:')){ const bytes=b64dec(code.slice(4)); const txt = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); return JSON.parse(txt); }
+  if(code.startsWith('PN0:')) return JSON.parse(new TextDecoder().decode(b64dec(code.slice(4))));
   if(code.startsWith('{')) return JSON.parse(code);
-  throw new Error('Не похоже на код результата: он должен начинаться с PRC1: или PRC0:');
+  throw new Error('Не похоже на код результата: он должен начинаться с PN1: или PN0:');
 }
 
-/* ---------- Анализ ---------- */
-function analyze(S){
-  const E = S.events, edits = E.filter(e=>e[0]==='e');
-  let typed=0, pasted=0, big=0, deleted=0, aways=0, awayMs=0, lastBack=null, awayStart=null, activeMs=0, longest=0, lastEditT=null;
-  const awayPaste=[], moments=[];
-  for(const e of E){
-    if(e[0]==='w'){ aways++; awayStart=e[1]; moments.push({t:e[1], kind:'w', text:'Ушёл(ла) со страницы'}); }
-    if(e[0]==='v' && awayStart!==null){ const d=e[1]-awayStart; awayMs+=d; lastBack=e[1]; awayStart=null; moments.push({t:e[1], kind:'v', text:`Вернулся(ась) через ${fmtDur(d)}`}); }
-    if(e[0]==='q') moments.push({t:e[1], kind:'q', text:'Показан вопрос: '+e[3]});
-    if(e[0]==='s' && e[2]==='main') moments.push({t:e[1], kind:'s', text:'Отчёт сдан'});
-    if(e[0]==='s' && e[3]==='timeout') moments.push({t:e[1], kind:'s', text:'Время на вопрос вышло'});
-    if(e[0]==='s' && e[3]==='reload') moments.push({t:e[1], kind:'s', text:'Страница перезагружена во время вопроса — вопрос пропущен'});
-    if(e[0]==='r') moments.push({t:e[1], kind:'r', text:'Страница открыта заново (продолжение работы)'});
-    if(e[0]==='e'){
-      deleted += e[4];
-      const n = e[5].length;
-      if(e[6]==='k') typed+=n; else if(e[6]==='b') big+=n; else pasted+=n;
-      if(e[6]!=='k' && n>0){
-        moments.push({t:e[1], kind:e[6], text:`${e[6]==='b'?'Крупная вставка без нажатий':'Вставка из буфера'}: ${n} симв. — «${e[5].slice(0,90).replace(/\s+/g,' ')}${n>90?'…':''}»`});
-        if(lastBack!==null && e[1]-lastBack < 30000) awayPaste.push(e);
-      }
-      if(lastEditT!==null){ const g=e[1]-lastEditT; if(g<60000) activeMs+=g; if(g>longest) longest=g; }
-      lastEditT=e[1];
-    }
-  }
-  const end = E.length ? E[E.length-1][1] : 0;
-  const inserted = typed+pasted+big;
-  const defense = (S.fields||[]).filter(f=>f.id!=='main').map(f=>{
-    const shown = E.find(e=>e[0]==='q' && e[2]===f.id), closed = E.find(e=>e[0]==='s' && e[2]===f.id);
-    const fe = edits.filter(e=>e[2]===f.id);
-    const t0 = shown?shown[1]:0, t1 = closed?closed[1]:t0;
-    const awayIn = E.filter(e=>e[0]==='w' && e[1]>=t0 && e[1]<=t1).length;
-    const pIn = fe.filter(e=>e[6]!=='k').reduce((a,e)=>a+e[5].length,0);
-    return { label:f.label, firstKey: fe.length ? fe[0][1]-t0 : null, dur:t1-t0, reason: closed?closed[3]:'—', awayIn, pasted:pIn,
-             typed: fe.filter(e=>e[6]==='k').reduce((a,e)=>a+e[5].length,0) };
-  });
-  return {trackAway:S.trackAway||'all',typed,pasted,big,deleted,aways,awayMs,activeMs,longest,end,inserted,awayPaste,defense,moments:moments.sort((a,b)=>a.t-b.t)};
-}
-function signals(A){
-  const out=[], pct = A.inserted ? Math.round((A.pasted+A.big)/A.inserted*100) : 0;
-  out.push({hi:pct>=30, text:`Вставлено готовым текстом: <b>${A.pasted+A.big}</b> символов из ${A.inserted} (<b>${pct}%</b>). Остальное набрано с клавиатуры.`});
-  out.push({hi:A.awayPaste.length>0, text: A.awayPaste.length ? `<b>${A.awayPaste.length}</b> раз(а) текст вставлен в течение 30 секунд после возвращения из другого окна. Это самый сильный сигнал: стоит спросить, откуда этот фрагмент.` : 'Вставок сразу после ухода в другое окно не было.'});
-  if(A.trackAway==='none') out.push({hi:false, text:'Уходы в другие окна в этом задании не отслеживались.'});
-  else if(A.trackAway==='defense') out.push({hi:A.aways>0, text: A.aways ? `Во время защиты уходил(а) в другие окна <b>${A.aways}</b> раз(а), в сумме ${fmtDur(A.awayMs)}. Вопросы касаются собственного опыта, искать для ответа ничего не нужно.` : 'Во время защиты в другие окна не уходил(а). Пока писался отчёт, уходы не отслеживались: там нужно искать информацию.'});
-  else out.push({hi:false, text:`Уходил(а) со страницы <b>${A.aways}</b> раз(а), в сумме ${fmtDur(A.awayMs)}.`});
-  out.push({hi:false, text:`Правок: удалено <b>${A.deleted}</b> символов. Живой текст обычно много правят; ровный набор без единой правки бывает при перепечатывании.`});
-  A.defense.forEach((d,i)=>{
-    const bits=[];
-    bits.push(d.firstKey===null ? 'не начал(а) отвечать' : `начал(а) печатать через ${fmtDur(d.firstKey)}`);
-    bits.push(d.reason==='timeout'?'время вышло':d.reason==='reload'?'перезагрузил(а) страницу':`ответ за ${fmtDur(d.dur)}`);
-    if(d.awayIn) bits.push(`<b>уходил(а) в другое окно ${d.awayIn} раз(а)</b>`);
-    if(d.pasted) bits.push(`<b>вставлено ${d.pasted} символов</b>`);
-    out.push({hi: d.awayIn>0 || d.pasted>0, text:`Вопрос ${i+1}: ${bits.join(', ')}.`});
-  });
-  return out;
-}
-
-/* ---------- Просмотр ---------- */
+/* ---------- Просмотр ответа ---------- */
 function Review(){
   app.innerHTML = `
-    <h1>Просмотр записи</h1>
-    <p class="lead">Вставьте код результата, который прислал кандидат, или откройте пример.</p>
+    <h1>Просмотр ответа</h1>
+    <p class="lead">Вставьте код результата, который прислал кандидат.</p>
     <div class="card">
-      <textarea class="code" id="inp" placeholder="PRC1:…"></textarea>
+      <textarea class="code" id="inp" placeholder="PN1:…"></textarea>
       <div class="row" style="margin-top:10px">
-        <button class="btn" id="load">Открыть запись</button>
-        <label class="btn ghost sm" style="cursor:pointer">Из файла<input type="file" id="file" accept=".txt,.json" hidden></label>
-        <button class="btn ghost sm" id="demo">Открыть пример</button>
+        <button class="btn" id="load">Открыть ответ</button>
         <span class="small" id="err" style="color:var(--red)"></span>
       </div>
     </div>
     <div id="res"></div>`;
-  const open = async txt => { $('#err').textContent=''; try{ loadSession(await decodeSession(txt)); }catch(e){ $('#err').textContent = e.message || 'Не удалось прочитать код'; } };
+  const open = async txt => { $('#err').textContent=''; try{ showResult(await decodeResult(txt)); }catch(e){ $('#err').textContent = e.message || 'Не удалось прочитать код'; } };
   $('#load').onclick = () => open($('#inp').value);
-  $('#file').onchange = async e => { const f=e.target.files[0]; if(f) open(await f.text()); };
-  $('#demo').onclick = () => loadSession(demoSession());
 }
 
-function loadSession(S){
-  const A = analyze(S);
+function showResult(R){
+  const started = new Date(R.start).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
   const res = $('#res');
-  const started = new Date(S.start).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
   res.innerHTML = `
     <div class="card">
-      <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(S.name)}${S.demo?' <span class="pill">пример</span>':''}</h2><span class="muted small">«${esc(S.task.title)}» · начало ${started}</span></div>
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(R.name)}</h2><span class="muted small">«${esc(R.task.title)}» · начало ${started}</span></div>
     </div>
-    <div class="grid4">
-      <div class="metric"><b>${fmtDur(A.end)}</b><span>от начала до конца</span></div>
-      <div class="metric"><b>${fmtDur(A.activeMs)}</b><span>активного письма</span></div>
-      <div class="metric"><b>${A.inserted ? Math.round((A.pasted+A.big)/A.inserted*100) : 0}%</b><span>текста вставлено готовым</span></div>
-      <div class="metric"><b>${A.trackAway==='none'?'—':A.aways}</b><span>${A.trackAway==='defense'?'уходов в другие окна на защите':'уходов в другие окна'}</span></div>
+    <div class="grid3">
+      <div class="metric"><b>${R.submittedAt ? fmtDur(R.submittedAt - R.start) : '—'}</b><span>на отчёт</span></div>
+      <div class="metric"><b>${(R.report||'').trim().length}</b><span>символов в отчёте</span></div>
+      <div class="metric"><b>${fmtDur((R.answers||[]).reduce((a,x)=>a+(x.ms||0),0))}</b><span>на защиту</span></div>
     </div>
-    <div class="card">
-      <h2>Сигналы</h2>
-      <ul class="signals">${signals(A).map(s=>`<li class="${s.hi?'hi':''}">${s.text}</li>`).join('')}</ul>
-    </div>
-    <div class="card">
-      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Повтор</h2>
-        <div class="row">
-          <button class="btn sm" id="pl">▶ Смотреть</button>
-          <select id="sp"><option value="1">×1</option><option value="4" selected>×4</option><option value="16">×16</option><option value="64">×64</option></select>
-          <label class="small"><input type="checkbox" id="cmp" checked> сжимать паузы</label>
-        </div>
-      </div>
-      <div class="timeline" id="tl"></div>
-      <div class="row" style="justify-content:space-between"><div class="legend"><span><i style="background:#e3b20f"></i>вставка</span><span><i style="background:#e8743b"></i>крупная вставка без нажатий</span><span><i style="background:var(--away)"></i>в другом окне</span><span><i style="background:var(--q)"></i>вопрос</span></div><span class="mono small" id="tt"></span></div>
-      <div id="fields"></div>
-    </div>
-    <div class="card"><h2>Ключевые моменты</h2><p class="small muted" style="margin-top:0">Нажмите, чтобы перейти к моменту в повторе.</p><div class="moments" id="mom"></div></div>`;
+    <div class="card"><h2>Отчёт</h2><div class="answer-view">${esc(R.report||'')}</div></div>
+    <div class="card"><h2>Защита</h2>
+      ${(R.answers||[]).map((x,i)=>`<div class="field"><div class="qhead"><div class="lbl">Вопрос ${i+1}. ${esc(x.q)}</div><span class="t">${x.ms!=null?'ответ за '+fmtDur(x.ms):'без ответа'}</span></div><div class="answer-view">${esc(x.a||'')}</div></div>`).join('')}
+    </div>`;
   res.scrollIntoView({behavior:'smooth'});
-  Player(S, A);
-}
-
-function Player(S, A){
-  const E = S.events;
-  let vts = [], total = 0, idx = 0, playing = false, vt = 0, raf = null, lastFrame = 0;
-  const state = {}; let lastField = null;
-  const fieldsEl = $('#fields');
-  fieldsEl.innerHTML = S.fields.map(f=>`<div class="field" id="f-${f.id}"><div class="lbl">${f.id==='main'?esc(f.label):'Вопрос: '+esc(f.label)}</div><div class="txt"></div></div>`).join('');
-  function timeline(){
-    const compress = $('#cmp').checked; vts=[]; let v=0, prev=0;
-    for(const e of E){ let g=e[1]-prev; if(compress) g=Math.min(g, 1500); v+=g; prev=e[1]; vts.push(v); }
-    total = Math.max(v, 1);
-    const tl = $('#tl'); let html=''; let wStart=null;
-    E.forEach((e,i)=>{
-      const x = vts[i]/total*100;
-      if(e[0]==='e' && e[6]!=='k' && e[5].length) html+=`<div class="m ${e[6]==='b'?'b':'p'}" style="left:${x}%;width:0.4%"></div>`;
-      if(e[0]==='w') wStart=x;
-      if(e[0]==='v' && wStart!==null){ html+=`<div class="m w" style="left:${wStart}%;width:${Math.max(x-wStart,0.5)}%"></div>`; wStart=null; }
-      if(e[0]==='q') html+=`<div class="m q" style="left:${x}%"></div>`;
-    });
-    tl.innerHTML = html + '<div class="head" id="hd"></div>';
-  }
-  function reset(){ S.fields.forEach(f=>state[f.id]=[]); idx=0; lastField=null; }
-  function apply(e){ if(e[0]!=='e') return; const arr=state[e[2]]||(state[e[2]]=[]); arr.splice(e[3], e[4], ...e[5].split('').map(c=>({c,k:e[6]}))); lastField=e[2]; }
-  function seek(v){ reset(); vt=v; while(idx<E.length && vts[idx]<=vt){ apply(E[idx]); idx++; } draw(); }
-  function draw(){
-    for(const f of S.fields){
-      const arr = state[f.id]||[]; let html='', run='', k=null;
-      for(const ch of arr){ if(ch.k!==k){ if(run) html+= k==='k'?esc(run):`<span class="k-${k}">${esc(run)}</span>`; run=''; k=ch.k; } run+=ch.c; }
-      if(run) html+= k==='k'?esc(run):`<span class="k-${k}">${esc(run)}</span>`;
-      if(playing && lastField===f.id) html+='<span class="caret"></span>';
-      const el = document.querySelector(`#f-${f.id} .txt`); if(el) el.innerHTML = html || '<span class="muted small">пока пусто</span>';
-    }
-    const hd=$('#hd'); if(hd) hd.style.left = (vt/total*100)+'%';
-    const realT = idx>0 ? E[idx-1][1] : 0;
-    $('#tt').textContent = `${clock(realT)} / ${clock(A.end)}`;
-  }
-  function frame(ts){
-    if(!playing) return;
-    const dt = (ts - lastFrame) * Number($('#sp').value); lastFrame = ts; vt += dt;
-    while(idx<E.length && vts[idx]<=vt){ apply(E[idx]); idx++; }
-    if(idx>=E.length){ vt=total; playing=false; $('#pl').textContent='↺ Сначала'; }
-    draw(); if(playing) raf=requestAnimationFrame(frame);
-  }
-  $('#pl').onclick = () => {
-    if(playing){ playing=false; cancelAnimationFrame(raf); $('#pl').textContent='▶ Смотреть'; draw(); return; }
-    if(idx>=E.length) seek(0);
-    playing=true; $('#pl').textContent='❚❚ Пауза'; lastFrame=performance.now(); raf=requestAnimationFrame(frame);
-  };
-  $('#cmp').onchange = () => { const real = idx>0?E[idx-1][1]:0; timeline(); const j=E.findIndex(e=>e[1]>=real); seek(j<0?total:vts[j]); };
-  $('#tl').onclick = ev => { const r=ev.currentTarget.getBoundingClientRect(); seek((ev.clientX-r.left)/r.width*total); };
-  const icon = {p:'📋',b:'⚡',d:'📋',w:'↗',v:'↩',q:'❓',s:'⏱',r:'⟳'};
-  $('#mom').innerHTML = A.moments.length ? A.moments.map((m,i)=>`<div data-t="${m.t}"><span class="mono small muted">${clock(m.t)}</span> ${icon[m.kind]||'•'} ${esc(m.text)}</div>`).join('') : '<span class="muted small">Ничего примечательного</span>';
-  $('#mom').onclick = ev => { const d=ev.target.closest('[data-t]'); if(!d) return; const t=+d.dataset.t; const j=E.findIndex(e=>e[1]>=t); seek(j<0?total:vts[j]); $('#tl').scrollIntoView({behavior:'smooth',block:'center'}); };
-  cleanup.push(()=>{ playing=false; cancelAnimationFrame(raf); });
-  timeline(); seek(total);
-}
-
-/* ---------- Демо-запись ---------- */
-function demoSession(){
-  const task = TASKS[0], ev=[], val={}; let t=0;
-  const rnd = (a,b)=>a+Math.random()*(b-a);
-  const type = (f,text,speed=150) => { val[f]=val[f]||''; for(const ch of text){ t += speed*rnd(.5,1.5) + ('.,'.includes(ch)?rnd(200,700):0) + (Math.random()<.02?rnd(1500,4000):0); ev.push(['e',Math.round(t),f,val[f].length,0,ch,'k']); val[f]+=ch; } };
-  const typo = (f,wrong) => { type(f,wrong); for(let i=0;i<wrong.length;i++){ t+=rnd(90,160); ev.push(['e',Math.round(t),f,val[f].length-1,1,'','k']); val[f]=val[f].slice(0,-1); } };
-  const pause = ms => t+=ms;
-  const away = ms => { ev.push(['w',Math.round(t)]); t+=ms; ev.push(['v',Math.round(t)]); };
-  const paste = (f,text) => { t+=rnd(600,1500); val[f]=val[f]||''; ev.push(['e',Math.round(t),f,val[f].length,0,text,'p']); val[f]+=text; };
-  type('main','Расхождение: в объявлении на Циане дом в Лечищево указан как свободный, ');
-  typo('main','а по телефны '); type('main','а по телефону менеджер сказал, что на него уже внесён задаток.');
-  pause(9000);
-  type('main','\n\nКак выяснила: позвонила по номеру из объявления как покупатель, спросила, можно ли посмотреть дом в выходные. ');
-  pause(48000);
-  paste('main','\n\nРекомендации: внедрить единую CRM-систему с автоматической синхронизацией статусов объектов на всех площадках, назначить ответственного за актуальность объявлений и проводить еженедельный аудит публикаций. Это позволит минимизировать репутационные риски и повысить доверие клиентов.');
-  pause(6000);
-  type('main',' Проще: менять статус в одном месте, и пусть объявления подтягиваются оттуда.');
-  ev.push(['s',Math.round(t+2000),'main','submit']); t+=2500;
-  const qs = task.defense.pool.slice(0,3), fields=[{id:'main',label:task.answerLabel}];
-  qs.forEach((q,i)=>fields.push({id:'q'+(i+1),label:q}));
-  ev.push(['q',Math.round(t),'q1',qs[0]]); pause(3500);
-  type('q1','Девушка-менеджер, кажется Анна. Сказала, что дом «в работе», задаток внесли на прошлой неделе, объявление просто не сняли.',120);
-  ev.push(['s',Math.round(t+1200),'q1','submit']); t+=1500;
-  ev.push(['q',Math.round(t),'q2',qs[1]]); pause(2000); away(22000);
-  paste('q2','Изначально я предполагала, что расхождение связано с некорректной информацией о графике работы офиса, однако после анализа данных эта гипотеза не подтвердилась.');
-  ev.push(['s',Math.round(t+3000),'q2','submit']); t+=3500;
-  const tq = Math.round(t); ev.push(['q',tq,'q3',qs[2]]); pause(11000);
-  type('q3','Что задаток именно на этот дом, а не на соседний — уточнить не усп',170);
-  type('q3','ела, но у задатка есть дата — можно сверить с датой снятия объявления.',170);
-  ev.push(['s',Math.round(t+1500),'q3','submit']); t+=1500;
-  ev.push(['end',Math.round(t)]);
-  return {v:1, demo:true, trackAway:'defense', task:{id:task.id,title:task.title}, name:'Пример: кандидат «Мария»', start:Date.now()-Math.round(t)-3600e3, fields, events:ev};
 }
 
 /* ---------- Тема ---------- */
